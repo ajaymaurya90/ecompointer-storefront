@@ -5,24 +5,24 @@
  * USE STOREFRONT BOOTSTRAP
  * ---------------------------------------------------------
  * Purpose:
- * Loads BO storefront bootstrap data from backend and
- * exposes loading/error/data states to the app shell.
+ * Loads storefront bootstrap using current hostname.
  * ---------------------------------------------------------
  */
 
 import { useEffect, useState } from "react";
-import { getStorefrontBootstrap } from "@/modules/storefront/api/storefrontApi";
+import { getStorefrontBootstrapByHost } from "@/modules/storefront/api/storefrontApi";
 import type { StorefrontBootstrapResponse } from "@/modules/storefront/types/storefront";
 
-export function useStorefrontBootstrap(brandOwnerId: string | null) {
+export function useStorefrontBootstrap(hostname: string | null) {
     const [data, setData] = useState<StorefrontBootstrapResponse | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
     useEffect(() => {
         async function load() {
-            if (!brandOwnerId) {
-                setError("Brand owner id is missing");
+            if (!hostname) {
+                setData(null);
+                setError("Storefront hostname is missing");
                 setIsLoading(false);
                 return;
             }
@@ -31,9 +31,10 @@ export function useStorefrontBootstrap(brandOwnerId: string | null) {
                 setIsLoading(true);
                 setError(null);
 
-                const response = await getStorefrontBootstrap(brandOwnerId);
+                const response = await getStorefrontBootstrapByHost(hostname);
                 setData(response);
             } catch (err: any) {
+                setData(null);
                 setError(
                     err?.response?.data?.message ||
                     err?.message ||
@@ -45,7 +46,7 @@ export function useStorefrontBootstrap(brandOwnerId: string | null) {
         }
 
         void load();
-    }, [brandOwnerId]);
+    }, [hostname]);
 
     return {
         data,

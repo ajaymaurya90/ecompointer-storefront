@@ -6,7 +6,7 @@
  * ---------------------------------------------------------
  * Purpose:
  * Fetches and renders storefront product listing using the
- * active BO bootstrap context.
+ * resolved Brand Owner from storefront bootstrap context.
  * ---------------------------------------------------------
  */
 
@@ -20,7 +20,14 @@ import { useStorefrontBootstrapContext } from "@/providers/StorefrontBootstrapPr
 import type { StorefrontProductListItem } from "@/modules/products/types/product";
 
 export default function ProductListPage() {
-    const { brandOwnerId, bootstrap } = useStorefrontBootstrapContext();
+    const {
+        bootstrap,
+        isLoading: isBootstrapLoading,
+        error: bootstrapError,
+    } = useStorefrontBootstrapContext();
+
+    // Resolve BO id from loaded storefront bootstrap instead of old direct context field.
+    const brandOwnerId = bootstrap?.brandOwner?.id ?? null;
 
     const [products, setProducts] = useState<StorefrontProductListItem[]>([]);
     const [isLoading, setIsLoading] = useState(true);
@@ -40,10 +47,25 @@ export default function ProductListPage() {
         totalPages: 1,
     });
 
-    // Load storefront product list whenever active filters or BO changes.
+    // Load storefront products only after bootstrap finishes and BO id becomes available.
     useEffect(() => {
         async function loadProducts() {
+            // Wait until storefront bootstrap finishes before deciding BO availability.
+            if (isBootstrapLoading) {
+                return <StorefrontShell>Loading storefront...</StorefrontShell>;
+            }
+
+            // Show bootstrap failure message when storefront itself could not resolve.
+            if (bootstrapError) {
+                setProducts([]);
+                setError(bootstrapError);
+                setIsLoading(false);
+                return;
+            }
+
+            // Stop and show error only after bootstrap completed and BO id is still missing.
             if (!brandOwnerId) {
+                setProducts([]);
                 setError("Brand owner id is missing");
                 setIsLoading(false);
                 return;
@@ -62,6 +84,7 @@ export default function ProductListPage() {
                 setProducts(response.data);
                 setPagination(response.pagination);
             } catch (err: any) {
+                setProducts([]);
                 setError(
                     err?.response?.data?.message ||
                     err?.message ||
@@ -73,7 +96,7 @@ export default function ProductListPage() {
         }
 
         void loadProducts();
-    }, [brandOwnerId, appliedSearch, appliedLimit, page]);
+    }, [brandOwnerId, isBootstrapLoading, bootstrapError, appliedSearch, appliedLimit, page]);
 
     // Apply current filter form values to active listing query state.
     function handleApplyFilters() {
@@ -95,6 +118,17 @@ export default function ProductListPage() {
         bootstrap?.storefront?.storefrontName ||
         bootstrap?.brandOwner?.businessName ||
         "Storefront";
+
+    // Show top-level storefront bootstrap loading state before listing fetch starts.
+    if (isBootstrapLoading) {
+        return (
+            <StorefrontShell>
+                <section className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
+                    <ProductListSkeleton />
+                </section>
+            </StorefrontShell>
+        );
+    }
 
     return (
         <StorefrontShell>
@@ -128,7 +162,7 @@ export default function ProductListPage() {
 
                     {error ? (
                         <div className="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
-                            {error}
+                            {Array.isArray(error) ? error.join(", ") : error}
                         </div>
                     ) : null}
 

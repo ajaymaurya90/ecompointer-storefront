@@ -15,7 +15,8 @@
  * 3. Hides login link when authenticated
  * 4. Shows account/orders link when authenticated
  * 5. Adds logout action
- * 6. Shows live cart count badge
+ * 6. Shows live cart item count badge
+ * 7. Shows storefront tagline when configured
  * ---------------------------------------------------------
  */
 
@@ -49,6 +50,9 @@ export default function StorefrontHeader() {
         bootstrap?.brandOwner?.businessName ||
         "Storefront";
 
+    const storefrontTagline =
+        bootstrap?.storefront?.tagline || "Customer storefront";
+
     // Build readable customer name for authenticated header state.
     const customerName =
         [customer?.firstName, customer?.lastName].filter(Boolean).join(" ").trim() ||
@@ -81,7 +85,7 @@ export default function StorefrontHeader() {
                             {storefrontName}
                         </div>
                         <div className="text-xs text-slate-500">
-                            Customer storefront
+                            {storefrontTagline}
                         </div>
                     </div>
                 </Link>

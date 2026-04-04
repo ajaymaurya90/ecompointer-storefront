@@ -1,36 +1,36 @@
-/**
- * ---------------------------------------------------------
- * ROOT LAYOUT
- * ---------------------------------------------------------
- * Purpose:
- * Wraps the storefront app with bootstrap provider so BO
- * storefront settings are available globally.
- * ---------------------------------------------------------
- */
-
 import "./globals.css";
 import type { Metadata } from "next";
+import { headers } from "next/headers";
 import { StorefrontBootstrapProvider } from "@/providers/StorefrontBootstrapProvider";
+import TenantCartProvider from "@/providers/TenantCartProvider";
 
 export const metadata: Metadata = {
   title: "Ecompointer Storefront",
   description: "Multi-tenant storefront powered by Ecompointer",
 };
 
-export default function RootLayout({
+function normalizeHost(host?: string | null) {
+  if (!host) {
+    return null;
+  }
+
+  return host.trim().toLowerCase();
+}
+
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  // Temporary BO id until domain-based resolution is added.
-  const brandOwnerId =
-    process.env.NEXT_PUBLIC_BRAND_OWNER_ID || null;
+  const requestHeaders = await headers();
+  const host = requestHeaders.get("x-forwarded-host") || requestHeaders.get("host");
+  const normalizedHost = normalizeHost(host);
 
   return (
     <html lang="en">
-      <body>
-        <StorefrontBootstrapProvider brandOwnerId={brandOwnerId}>
-          {children}
+      <body suppressHydrationWarning>
+        <StorefrontBootstrapProvider hostname={normalizedHost}>
+          <TenantCartProvider>{children}</TenantCartProvider>
         </StorefrontBootstrapProvider>
       </body>
     </html>

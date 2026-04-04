@@ -5,9 +5,8 @@
  * STOREFRONT BOOTSTRAP PROVIDER
  * ---------------------------------------------------------
  * Purpose:
- * Provides storefront bootstrap data to the full frontend
- * app so layout, theme, and pages can use BO storefront
- * settings from one central place.
+ * Provides bootstrap data to the storefront app using
+ * current hostname instead of hardcoded BO mapping.
  * ---------------------------------------------------------
  */
 
@@ -20,33 +19,41 @@ import { useStorefrontBootstrap } from "@/hooks/useStorefrontBootstrap";
 import type { StorefrontBootstrapResponse } from "@/modules/storefront/types/storefront";
 
 type StorefrontBootstrapContextValue = {
-    brandOwnerId: string | null;
+    hostname: string | null;
     bootstrap: StorefrontBootstrapResponse | null;
     isLoading: boolean;
     error: string | null;
+    isTenantResolved: boolean;
 };
 
 const StorefrontBootstrapContext =
     createContext<StorefrontBootstrapContextValue | null>(null);
 
 type Props = {
-    brandOwnerId: string | null;
+    hostname: string | null;
     children: ReactNode;
 };
 
 export function StorefrontBootstrapProvider({
-    brandOwnerId,
+    hostname,
     children,
 }: Props) {
-    const { data, isLoading, error } = useStorefrontBootstrap(brandOwnerId);
+    const isTenantResolved = !!hostname;
+
+    const { data, isLoading, error } = useStorefrontBootstrap(
+        isTenantResolved ? hostname : null
+    );
 
     return (
         <StorefrontBootstrapContext.Provider
             value={{
-                brandOwnerId,
+                hostname,
                 bootstrap: data,
-                isLoading,
-                error,
+                isLoading: isTenantResolved ? isLoading : false,
+                error: isTenantResolved
+                    ? error
+                    : "Storefront hostname could not be resolved.",
+                isTenantResolved,
             }}
         >
             {children}

@@ -1,14 +1,5 @@
 "use client";
 
-/**
- * ---------------------------------------------------------
- * LOGIN PAGE
- * ---------------------------------------------------------
- * Purpose:
- * Handles storefront customer login flow and session restore.
- * ---------------------------------------------------------
- */
-
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -20,7 +11,15 @@ import { useStorefrontAuthStore } from "@/store/storefrontAuthStore";
 
 export default function LoginPage() {
     const router = useRouter();
-    const { brandOwnerId } = useStorefrontBootstrapContext();
+
+    const {
+        bootstrap,
+        isLoading: isBootstrapLoading,
+        error: bootstrapError,
+    } = useStorefrontBootstrapContext();
+
+    const brandOwnerId = bootstrap?.brandOwner?.id ?? null;
+
     const setSession = useStorefrontAuthStore((state) => state.setSession);
     const isAuthenticated = useStorefrontAuthStore((state) => state.isAuthenticated);
 
@@ -29,25 +28,28 @@ export default function LoginPage() {
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
-    // Redirect authenticated customer away from login page.
     useEffect(() => {
         if (isAuthenticated) {
             router.replace("/account/orders");
         }
     }, [isAuthenticated, router]);
 
-    // Update local form values from controlled login inputs.
     function handleChange(field: "email" | "password", value: string) {
         setError(null);
-
         if (field === "email") setEmail(value);
         if (field === "password") setPassword(value);
     }
 
-    // Submit storefront login and load current customer profile.
     async function handleSubmit() {
+        if (isBootstrapLoading) return;
+
+        if (bootstrapError) {
+            setError(bootstrapError);
+            return;
+        }
+
         if (!brandOwnerId) {
-            setError("Brand owner id is missing.");
+            setError("Storefront not available.");
             return;
         }
 
@@ -80,14 +82,18 @@ export default function LoginPage() {
         }
     }
 
+    if (isBootstrapLoading) {
+        return <StorefrontShell>Loading storefront...</StorefrontShell>;
+    }
+
     return (
         <StorefrontShell>
-            <section className="mx-auto max-w-3xl px-4 py-12 sm:px-6 lg:px-8">
-                {error ? (
+            <section className="mx-auto max-w-3xl px-4 py-12">
+                {error && (
                     <div className="mb-6 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
                         {error}
                     </div>
-                ) : null}
+                )}
 
                 <LoginForm
                     email={email}
@@ -99,10 +105,7 @@ export default function LoginPage() {
 
                 <div className="mt-5 text-center text-sm text-slate-600">
                     Don&apos;t have an account?{" "}
-                    <Link
-                        href="/register"
-                        className="font-medium text-slate-900 underline underline-offset-4"
-                    >
+                    <Link href="/register" className="underline">
                         Register here
                     </Link>
                 </div>

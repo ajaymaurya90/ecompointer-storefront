@@ -29,7 +29,8 @@ type Props = {
 };
 
 export default function ProductDetailPage({ productId }: Props) {
-    const { brandOwnerId } = useStorefrontBootstrapContext();
+    const { bootstrap } = useStorefrontBootstrapContext();
+    const brandOwnerId = bootstrap?.brandOwner?.id ?? null;
     const addItem = useCartStore((state) => state.addItem);
 
     const [product, setProduct] = useState<StorefrontProductDetail | null>(null);

@@ -50,7 +50,13 @@ const initialAddressState: AddressState = {
 
 export default function CheckoutPage() {
     const router = useRouter();
-    const { brandOwnerId } = useStorefrontBootstrapContext();
+    const {
+        bootstrap,
+        isLoading: isBootstrapLoading,
+        error: bootstrapError,
+    } = useStorefrontBootstrapContext();
+
+    const brandOwnerId = bootstrap?.brandOwner?.id ?? null;
 
     const items = useCartStore((state) => state.items);
     const clearCart = useCartStore((state) => state.clearCart);
@@ -187,8 +193,17 @@ export default function CheckoutPage() {
 
     // Validate and submit storefront checkout payload.
     async function handleSubmit() {
+        if (isBootstrapLoading) {
+            return <StorefrontShell>Loading checkout...</StorefrontShell>;
+        }
+
+        if (bootstrapError) {
+            setError(bootstrapError);
+            return;
+        }
+
         if (!brandOwnerId) {
-            setError("Brand owner id is missing.");
+            setError("Storefront not available.");
             return;
         }
 

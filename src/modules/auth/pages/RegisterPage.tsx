@@ -21,7 +21,13 @@ import { useStorefrontAuthStore } from "@/store/storefrontAuthStore";
 
 export default function RegisterPage() {
     const router = useRouter();
-    const { brandOwnerId } = useStorefrontBootstrapContext();
+    const {
+        bootstrap,
+        isLoading: isBootstrapLoading,
+        error: bootstrapError,
+    } = useStorefrontBootstrapContext();
+
+    const brandOwnerId = bootstrap?.brandOwner?.id ?? null;
     const isAuthenticated = useStorefrontAuthStore((state) => state.isAuthenticated);
 
     const [firstName, setFirstName] = useState("");
@@ -58,8 +64,15 @@ export default function RegisterPage() {
 
     // Submit storefront registration and redirect customer to login.
     async function handleSubmit() {
+        if (isBootstrapLoading) return;
+
+        if (bootstrapError) {
+            setError(bootstrapError);
+            return;
+        }
+
         if (!brandOwnerId) {
-            setError("Brand owner id is missing.");
+            setError("Storefront not available.");
             return;
         }
 
