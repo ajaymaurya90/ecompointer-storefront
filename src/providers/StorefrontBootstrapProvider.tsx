@@ -1,15 +1,5 @@
 "use client";
 
-/**
- * ---------------------------------------------------------
- * STOREFRONT BOOTSTRAP PROVIDER
- * ---------------------------------------------------------
- * Purpose:
- * Provides bootstrap data to the storefront app using
- * current hostname instead of hardcoded BO mapping.
- * ---------------------------------------------------------
- */
-
 import {
     createContext,
     useContext,
@@ -17,6 +7,16 @@ import {
 } from "react";
 import { useStorefrontBootstrap } from "@/hooks/useStorefrontBootstrap";
 import type { StorefrontBootstrapResponse } from "@/modules/storefront/types/storefront";
+
+/**
+ * ---------------------------------------------------------
+ * STOREFRONT BOOTSTRAP PROVIDER
+ * ---------------------------------------------------------
+ * Purpose:
+ * Loads storefront bootstrap using the normalized hostname
+ * received from server layout.
+ * ---------------------------------------------------------
+ */
 
 type StorefrontBootstrapContextValue = {
     hostname: string | null;

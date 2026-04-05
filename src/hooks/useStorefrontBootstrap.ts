@@ -1,18 +1,18 @@
 "use client";
 
+import { useEffect, useState } from "react";
+import { getStorefrontBootstrapByHost } from "@/modules/storefront/api/storefrontApi";
+import type { StorefrontBootstrapResponse } from "@/modules/storefront/types/storefront";
+
 /**
  * ---------------------------------------------------------
  * USE STOREFRONT BOOTSTRAP
  * ---------------------------------------------------------
  * Purpose:
- * Loads storefront bootstrap using current hostname.
+ * Fetches storefront bootstrap from backend using the
+ * normalized tenant host passed from server layout.
  * ---------------------------------------------------------
  */
-
-import { useEffect, useState } from "react";
-import { getStorefrontBootstrapByHost } from "@/modules/storefront/api/storefrontApi";
-import type { StorefrontBootstrapResponse } from "@/modules/storefront/types/storefront";
-
 export function useStorefrontBootstrap(hostname: string | null) {
     const [data, setData] = useState<StorefrontBootstrapResponse | null>(null);
     const [isLoading, setIsLoading] = useState(true);

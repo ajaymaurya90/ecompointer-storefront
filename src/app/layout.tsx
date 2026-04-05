@@ -9,27 +9,34 @@ export const metadata: Metadata = {
   description: "Multi-tenant storefront powered by Ecompointer",
 };
 
-function normalizeHost(host?: string | null) {
-  if (!host) {
-    return null;
-  }
-
-  return host.trim().toLowerCase();
-}
-
+/**
+ * ---------------------------------------------------------
+ * ROOT LAYOUT
+ * ---------------------------------------------------------
+ * Purpose:
+ * Reads the normalized tenant host forwarded by middleware
+ * and passes it into storefront bootstrap provider.
+ *
+ * Notes:
+ * - tenant resolution is now domain-first
+ * - frontend no longer decides BO using hardcoded mapping
+ * - backend remains the source of truth for host -> BO
+ * ---------------------------------------------------------
+ */
 export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
   const requestHeaders = await headers();
-  const host = requestHeaders.get("x-forwarded-host") || requestHeaders.get("host");
-  const normalizedHost = normalizeHost(host);
+
+  // Read only the middleware-normalized tenant host.
+  const tenantHost = requestHeaders.get("x-tenant-host");
 
   return (
     <html lang="en">
       <body suppressHydrationWarning>
-        <StorefrontBootstrapProvider hostname={normalizedHost}>
+        <StorefrontBootstrapProvider hostname={tenantHost}>
           <TenantCartProvider>{children}</TenantCartProvider>
         </StorefrontBootstrapProvider>
       </body>
