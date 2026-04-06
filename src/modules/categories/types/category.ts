@@ -3,47 +3,29 @@
  * STOREFRONT CATEGORY TYPES
  * ---------------------------------------------------------
  * Purpose:
- * Type definitions for storefront category navigation and
- * category detail pages.
+ * Shared storefront category response types used by
+ * category navigation and filtering UI.
  * ---------------------------------------------------------
  */
 
-export interface StorefrontCategoryChild {
+export type StorefrontCategoryChild = {
     id: string;
     name: string;
     description?: string | null;
     position: number;
     productCount: number;
-}
+};
 
-export interface StorefrontCategoryListItem {
+export type StorefrontCategoryItem = {
     id: string;
     name: string;
     description?: string | null;
     position: number;
     productCount: number;
     children: StorefrontCategoryChild[];
-}
+};
 
-export interface StorefrontCategoryListResponse {
+export type StorefrontCategoriesResponse = {
     message: string;
-    data: StorefrontCategoryListItem[];
-}
-
-export interface StorefrontCategoryDetail {
-    id: string;
-    name: string;
-    description?: string | null;
-    position: number;
-    productCount: number;
-    parent?: {
-        id: string;
-        name: string;
-    } | null;
-    children: StorefrontCategoryChild[];
-}
-
-export interface StorefrontCategoryDetailResponse {
-    message: string;
-    data: StorefrontCategoryDetail;
-}
+    data: StorefrontCategoryItem[];
+};

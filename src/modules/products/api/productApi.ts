@@ -1,35 +1,31 @@
+import { api } from "@/lib/http";
+
 /**
  * ---------------------------------------------------------
  * STOREFRONT PRODUCT API
  * ---------------------------------------------------------
  * Purpose:
- * API client for storefront product list and detail endpoints.
+ * Loads storefront products for listing and filtering.
  * ---------------------------------------------------------
  */
-
-import { api } from "@/lib/http";
-import type {
-    StorefrontProductDetail,
-    StorefrontProductDetailResponse,
-    StorefrontProductListResponse,
-    StorefrontProductQueryParams,
-} from "@/modules/products/types/product";
-
-function cleanParams<T extends object>(params: T) {
-    return Object.fromEntries(
-        Object.entries(params).filter(
-            ([, value]) => value !== "" && value !== undefined && value !== null
-        )
-    );
-}
-
 export async function getStorefrontProducts(
     brandOwnerId: string,
-    params: StorefrontProductQueryParams = {}
-): Promise<StorefrontProductListResponse> {
-    const response = await api.get(`/storefront/products/brand-owner/${brandOwnerId}`, {
-        params: cleanParams(params),
-    });
+    params?: {
+        search?: string;
+        page?: number;
+        limit?: number;
+        categoryId?: string | null;
+    }
+) {
+    const response = await api.get(
+        `/storefront/products/brand-owner/${brandOwnerId}`,
+        {
+            params: {
+                ...params,
+                categoryId: params?.categoryId || undefined,
+            },
+        }
+    );
 
     return response.data;
 }
@@ -37,10 +33,10 @@ export async function getStorefrontProducts(
 export async function getStorefrontProductById(
     brandOwnerId: string,
     productId: string
-): Promise<StorefrontProductDetail> {
-    const response = await api.get<StorefrontProductDetailResponse>(
+) {
+    const response = await api.get(
         `/storefront/products/brand-owner/${brandOwnerId}/${productId}`
     );
 
-    return response.data.data;
+    return response.data;
 }
