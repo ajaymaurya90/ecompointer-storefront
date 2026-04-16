@@ -1,4 +1,5 @@
 import { api } from "@/lib/http";
+import type { StorefrontProductDetail } from "@/modules/products/types/product";
 
 /**
  * ---------------------------------------------------------
@@ -33,10 +34,10 @@ export async function getStorefrontProducts(
 export async function getStorefrontProductById(
     brandOwnerId: string,
     productId: string
-) {
+): Promise<StorefrontProductDetail> {
     const response = await api.get(
         `/storefront/products/brand-owner/${brandOwnerId}/${productId}`
     );
 
-    return response.data;
+    return response.data?.data ?? response.data;
 }

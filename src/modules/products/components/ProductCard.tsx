@@ -11,12 +11,14 @@
 
 import Link from "next/link";
 import type { StorefrontProductListItem } from "@/modules/products/types/product";
+import { resolveMediaUrl } from "@/lib/mediaUrl";
 
 type Props = {
     product: StorefrontProductListItem;
 };
 
 export default function ProductCard({ product }: Props) {
+    const imageUrl = resolveMediaUrl(product.image);
     const priceText =
         product.price.min === product.price.max
             ? `₹${product.price.min.toFixed(2)}`
@@ -28,9 +30,9 @@ export default function ProductCard({ product }: Props) {
             className="group overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
         >
             <div className="aspect-[4/3] w-full overflow-hidden bg-slate-100">
-                {product.image ? (
+                {imageUrl ? (
                     <img
-                        src={product.image}
+                        src={imageUrl}
                         alt={product.imageAlt || product.name}
                         className="h-full w-full object-cover transition duration-300 group-hover:scale-[1.02]"
                     />
@@ -51,7 +53,7 @@ export default function ProductCard({ product }: Props) {
                 </h3>
 
                 <p className="mt-2 line-clamp-2 min-h-[40px] text-sm leading-6 text-slate-500">
-                    {product.description || "Browse this product and view available variants."}
+                    {product.description || "Browse this product and choose your option."}
                 </p>
 
                 <div className="mt-4 flex items-end justify-between gap-4">
@@ -60,7 +62,9 @@ export default function ProductCard({ product }: Props) {
                             {priceText}
                         </div>
                         <div className="mt-1 text-xs text-slate-500">
-                            {product.variantCount} variant{product.variantCount === 1 ? "" : "s"}
+                            {product.variantCount > 0
+                                ? `${product.variantCount} option${product.variantCount === 1 ? "" : "s"}`
+                                : "Simple product"}
                         </div>
                     </div>
 

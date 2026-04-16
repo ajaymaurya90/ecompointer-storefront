@@ -2,10 +2,10 @@
 
 /**
  * ---------------------------------------------------------
- * PRODUCT VARIANT SELECTOR
+ * PRODUCT OPTION SELECTOR
  * ---------------------------------------------------------
  * Purpose:
- * Lets customer choose one product variant for purchase.
+ * Lets customer choose one sellable product option for purchase.
  * ---------------------------------------------------------
  */
 
@@ -26,20 +26,25 @@ export default function ProductVariantSelector({
         return null;
     }
 
+    if (variants.length === 1 && variants[0].isStandalone) {
+        return null;
+    }
+
     return (
         <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
             <div className="mb-4">
                 <h3 className="text-lg font-semibold text-slate-900">
-                    Select Variant
+                    Select Option
                 </h3>
                 <p className="mt-1 text-sm text-slate-500">
-                    Choose the variant you want to add to cart.
+                    Choose the option you want to add to cart.
                 </p>
             </div>
 
             <div className="space-y-3">
                 {variants.map((variant) => {
                     const label =
+                        variant.variantLabel ||
                         [variant.size, variant.color].filter(Boolean).join(" / ") ||
                         variant.sku;
 

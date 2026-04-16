@@ -19,6 +19,7 @@ import ProductDetailSkeleton from "@/modules/products/components/ProductDetailSk
 import { getStorefrontProductById } from "@/modules/products/api/productApi";
 import { useStorefrontBootstrapContext } from "@/providers/StorefrontBootstrapProvider";
 import { useCartStore } from "@/modules/cart/store/cartStore";
+import { resolveMediaUrl } from "@/lib/mediaUrl";
 import type {
     StorefrontProductDetail,
     StorefrontProductVariant,
@@ -54,10 +55,18 @@ export default function ProductDetailPage({ productId }: Props) {
                 setError(null);
 
                 const data = await getStorefrontProductById(brandOwnerId, productId);
-                setProduct(data);
+                const normalizedProduct = {
+                    ...data,
+                    media: Array.isArray(data.media) ? data.media : [],
+                    variants: Array.isArray(data.variants) ? data.variants : [],
+                };
 
-                if (data.variants.length) {
-                    setSelectedVariantId(data.variants[0].id);
+                setProduct(normalizedProduct);
+
+                if (normalizedProduct.variants.length) {
+                    setSelectedVariantId(normalizedProduct.variants[0].id);
+                } else {
+                    setSelectedVariantId("");
                 }
             } catch (err: any) {
                 setError(
@@ -73,16 +82,17 @@ export default function ProductDetailPage({ productId }: Props) {
         void loadProduct();
     }, [brandOwnerId, productId]);
 
-    // Resolve currently selected variant for gallery and purchase card.
+    // Resolve currently selected sellable option for gallery and purchase card.
     const selectedVariant = useMemo<StorefrontProductVariant | null>(() => {
         if (!product) return null;
+        const variants = Array.isArray(product.variants) ? product.variants : [];
         return (
-            product.variants.find((variant) => variant.id === selectedVariantId) ||
+            variants.find((variant) => variant.id === selectedVariantId) ||
             null
         );
     }, [product, selectedVariantId]);
 
-    // Keep quantity within safe range whenever selected variant changes.
+    // Keep quantity within safe range whenever selected option changes.
     useEffect(() => {
         if (!selectedVariant) {
             setQuantity(1);
@@ -96,19 +106,21 @@ export default function ProductDetailPage({ productId }: Props) {
         });
     }, [selectedVariant]);
 
-    // Add selected product variant to persistent storefront cart.
+    // Add selected sellable product to persistent storefront cart.
     function handleAddToCart() {
         if (!product || !selectedVariant || !brandOwnerId) {
             return;
         }
 
         const variantLabel =
+            selectedVariant.variantLabel ||
             [selectedVariant.size, selectedVariant.color]
                 .filter(Boolean)
                 .join(" / ") || selectedVariant.sku;
 
-        const primaryImage =
-            selectedVariant.media[0]?.url || product.media[0]?.url || null;
+        const primaryImage = resolveMediaUrl(
+            selectedVariant.media?.[0]?.url || product.media?.[0]?.url || null
+        );
 
         addItem({
             productId: product.id,
@@ -143,7 +155,7 @@ export default function ProductDetailPage({ productId }: Props) {
                     <div className="grid grid-cols-1 gap-8 xl:grid-cols-12">
                         <div className="space-y-6 xl:col-span-7">
                             <ProductGallery
-                                productMedia={product.media}
+                                productMedia={product.media ?? []}
                                 selectedVariant={selectedVariant}
                             />
 
@@ -162,14 +174,14 @@ export default function ProductDetailPage({ productId }: Props) {
 
                                 <p className="mt-5 whitespace-pre-line text-sm leading-7 text-slate-600">
                                     {product.description ||
-                                        "This product is available in multiple variants for storefront purchase."}
+                                        "This product is available for storefront purchase."}
                                 </p>
                             </div>
                         </div>
 
                         <div className="space-y-6 xl:col-span-5">
                             <ProductVariantSelector
-                                variants={product.variants}
+                                variants={product.variants ?? []}
                                 selectedVariantId={selectedVariantId}
                                 onChange={setSelectedVariantId}
                             />

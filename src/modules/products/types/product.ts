@@ -70,12 +70,17 @@ export interface StorefrontProductVariantAttribute {
 export interface StorefrontProductVariant {
     id: string;
     sku: string;
+    name?: string | null;
+    description?: string | null;
+    variantLabel?: string | null;
     size?: string | null;
     color?: string | null;
+    isStandalone?: boolean;
     taxRate: number;
     retailGross: number;
     stock: number;
     inStock: boolean;
+    mediaSource?: "product" | "variant" | "product-fallback";
     media: StorefrontProductMedia[];
     attributes: StorefrontProductVariantAttribute[];
 }

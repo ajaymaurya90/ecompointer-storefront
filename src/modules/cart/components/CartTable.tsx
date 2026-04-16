@@ -10,6 +10,7 @@
  */
 
 import type { CartItem } from "@/modules/cart/types/cart";
+import { resolveMediaUrl } from "@/lib/mediaUrl";
 
 type Props = {
     items: CartItem[];
@@ -42,6 +43,7 @@ export default function CartTable({
                             const lineTotal =
                                 item.price * item.quantity +
                                 ((item.price * item.quantity) * item.taxRate) / 100;
+                            const imageUrl = resolveMediaUrl(item.image);
 
                             return (
                                 <tr
@@ -51,9 +53,9 @@ export default function CartTable({
                                     <td className="px-5 py-4">
                                         <div className="flex items-start gap-4">
                                             <div className="h-16 w-16 overflow-hidden rounded-2xl bg-slate-100">
-                                                {item.image ? (
+                                                {imageUrl ? (
                                                     <img
-                                                        src={item.image}
+                                                        src={imageUrl}
                                                         alt={item.productName}
                                                         className="h-full w-full object-cover"
                                                     />

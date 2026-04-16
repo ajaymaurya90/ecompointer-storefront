@@ -5,7 +5,7 @@
  * ADD TO CART CARD
  * ---------------------------------------------------------
  * Purpose:
- * Displays selected variant summary and add-to-cart action.
+ * Displays selected sellable option summary and add-to-cart action.
  * ---------------------------------------------------------
  */
 
@@ -36,9 +36,12 @@ export default function AddToCartCard({
         !!selectedVariant && selectedVariant.inStock && quantity > 0;
 
     const variantLabel = selectedVariant
-        ? [selectedVariant.size, selectedVariant.color].filter(Boolean).join(" / ") ||
+        ? selectedVariant.variantLabel ||
+        [selectedVariant.size, selectedVariant.color].filter(Boolean).join(" / ") ||
         selectedVariant.sku
-        : "Select a variant";
+        : "Select an option";
+
+    const optionLabel = selectedVariant?.isStandalone ? "Product" : "Option";
 
     return (
         <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
@@ -51,7 +54,7 @@ export default function AddToCartCard({
             </h2>
 
             <div className="mt-3 text-sm text-slate-600">
-                Variant:{" "}
+                {optionLabel}:{" "}
                 <span className="font-medium text-slate-900">{variantLabel}</span>
             </div>
 
@@ -94,13 +97,13 @@ export default function AddToCartCard({
 
             {!selectedVariant ? (
                 <p className="mt-3 text-xs text-amber-600">
-                    Please select a variant first.
+                    Please select an option first.
                 </p>
             ) : null}
 
             {selectedVariant && !selectedVariant.inStock ? (
                 <p className="mt-3 text-xs text-red-500">
-                    This variant is currently out of stock.
+                    This option is currently out of stock.
                 </p>
             ) : null}
         </div>

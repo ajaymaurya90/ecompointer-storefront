@@ -25,6 +25,7 @@ import { useEffect } from "react";
 import { useStorefrontBootstrapContext } from "@/providers/StorefrontBootstrapProvider";
 import { useStorefrontAuthStore } from "@/store/storefrontAuthStore";
 import { useCartStore } from "@/modules/cart/store/cartStore";
+import { resolveMediaUrl } from "@/lib/mediaUrl";
 
 export default function StorefrontHeader() {
     const { bootstrap } = useStorefrontBootstrapContext();
@@ -52,6 +53,7 @@ export default function StorefrontHeader() {
 
     const storefrontTagline =
         bootstrap?.storefront?.tagline || "Customer storefront";
+    const logoUrl = resolveMediaUrl(bootstrap?.storefront?.logoUrl);
 
     // Build readable customer name for authenticated header state.
     const customerName =
@@ -68,9 +70,9 @@ export default function StorefrontHeader() {
         <header className="border-b border-slate-200 bg-white">
             <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-4 sm:px-6 lg:px-8">
                 <Link href="/" className="flex items-center gap-3">
-                    {bootstrap?.storefront?.logoUrl ? (
+                    {logoUrl ? (
                         <img
-                            src={bootstrap.storefront.logoUrl}
+                            src={logoUrl}
                             alt={storefrontName}
                             className="h-10 w-10 rounded-xl object-cover"
                         />
