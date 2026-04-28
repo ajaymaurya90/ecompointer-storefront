@@ -33,6 +33,7 @@ export interface CreateStorefrontOrderPayload {
     notes?: string;
     shippingAmount?: string;
     discountAmount?: string;
+    selectedPaymentMethod?: PaymentMethod;
     sameAsBilling?: boolean;
     billingAddress: StorefrontCheckoutAddressPayload;
     shippingAddress?: StorefrontCheckoutAddressPayload;
@@ -46,7 +47,26 @@ export interface CreateStorefrontOrderResponse {
         orderNumber: string;
         status: string;
         paymentStatus: string;
+        selectedPaymentMethod?: PaymentMethod | null;
         totalAmount: string;
         createdAt: string;
+        orderAccessToken: string;
     };
+}
+
+export type PaymentMethod = "ONLINE" | "CASH_ON_DELIVERY";
+
+export interface StorefrontOrderStatus {
+    orderId: string;
+    orderNumber: string;
+    orderStatus: string;
+    paymentStatus: string;
+    selectedPaymentMethod?: string | null;
+    latestPaymentTransactionStatus?: string | null;
+    latestPaymentTransactionId?: string | null;
+    canRetryPayment: boolean;
+}
+
+export interface StorefrontOrderStatusResponse {
+    data: StorefrontOrderStatus;
 }

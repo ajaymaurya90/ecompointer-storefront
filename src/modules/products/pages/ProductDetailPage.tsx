@@ -16,6 +16,7 @@ import ProductGallery from "@/modules/products/components/ProductGallery";
 import ProductVariantSelector from "@/modules/products/components/ProductVariantSelector";
 import AddToCartCard from "@/modules/products/components/AddToCartCard";
 import ProductDetailSkeleton from "@/modules/products/components/ProductDetailSkeleton";
+import PincodeDeliveryCheck from "@/modules/storefront/components/PincodeDeliveryCheck";
 import { getStorefrontProductById } from "@/modules/products/api/productApi";
 import { useStorefrontBootstrapContext } from "@/providers/StorefrontBootstrapProvider";
 import { useCartStore } from "@/modules/cart/store/cartStore";
@@ -40,6 +41,10 @@ export default function ProductDetailPage({ productId }: Props) {
 
     const [selectedVariantId, setSelectedVariantId] = useState("");
     const [quantity, setQuantity] = useState(1);
+    const [cartMessage, setCartMessage] = useState<{
+        type: "success" | "error";
+        text: string;
+    } | null>(null);
 
     // Load selected storefront product detail using BO context and route id.
     useEffect(() => {
@@ -62,6 +67,7 @@ export default function ProductDetailPage({ productId }: Props) {
                 };
 
                 setProduct(normalizedProduct);
+                setCartMessage(null);
 
                 if (normalizedProduct.variants.length) {
                     setSelectedVariantId(normalizedProduct.variants[0].id);
@@ -106,9 +112,33 @@ export default function ProductDetailPage({ productId }: Props) {
         });
     }, [selectedVariant]);
 
+    useEffect(() => {
+        setCartMessage(null);
+    }, [selectedVariantId, quantity]);
+
     // Add selected sellable product to persistent storefront cart.
     function handleAddToCart() {
-        if (!product || !selectedVariant || !brandOwnerId) {
+        if (!product || !brandOwnerId) {
+            setCartMessage({
+                type: "error",
+                text: "This storefront is not ready for cart actions.",
+            });
+            return;
+        }
+
+        if (!selectedVariant) {
+            setCartMessage({
+                type: "error",
+                text: "Please select an available option before adding this product to cart.",
+            });
+            return;
+        }
+
+        if (!selectedVariant.inStock) {
+            setCartMessage({
+                type: "error",
+                text: "This product is currently out of stock.",
+            });
             return;
         }
 
@@ -116,7 +146,8 @@ export default function ProductDetailPage({ productId }: Props) {
             selectedVariant.variantLabel ||
             [selectedVariant.size, selectedVariant.color]
                 .filter(Boolean)
-                .join(" / ") || selectedVariant.sku;
+                .join(" / ") ||
+            (selectedVariant.isStandalone ? "Product" : selectedVariant.sku);
 
         const primaryImage = resolveMediaUrl(
             selectedVariant.media?.[0]?.url || product.media?.[0]?.url || null
@@ -124,6 +155,7 @@ export default function ProductDetailPage({ productId }: Props) {
 
         addItem({
             productId: product.id,
+            // Compatibility name: backend checkout accepts sellable Product.id here.
             productVariantId: selectedVariant.id,
             brandOwnerId,
             productName: product.name,
@@ -137,7 +169,12 @@ export default function ProductDetailPage({ productId }: Props) {
             quantity,
         });
 
-        alert("Product added to cart");
+        setCartMessage({
+            type: "success",
+            text: selectedVariant.isStandalone
+                ? "Product added to cart."
+                : "Selected option added to cart.",
+        });
     }
 
     return (
@@ -192,7 +229,10 @@ export default function ProductDetailPage({ productId }: Props) {
                                 quantity={quantity}
                                 onQuantityChange={setQuantity}
                                 onAddToCart={handleAddToCart}
+                                feedback={cartMessage}
                             />
+
+                            <PincodeDeliveryCheck brandOwnerId={brandOwnerId} compact />
                         </div>
                     </div>
                 ) : (

@@ -18,6 +18,17 @@ import CheckoutAddressForm from "@/modules/checkout/components/CheckoutAddressFo
 import CheckoutOrderSummary from "@/modules/checkout/components/CheckoutOrderSummary";
 import CheckoutSubmitCard from "@/modules/checkout/components/CheckoutSubmitCard";
 import { createStorefrontOrder } from "@/modules/checkout/api/checkoutApi";
+import {
+    createStorefrontPaymentSession,
+    getStorefrontPaymentMethods,
+    getStorefrontPaymentOptions,
+} from "@/modules/checkout/api/paymentApi";
+import { openRazorpayCheckout } from "@/modules/checkout/lib/razorpayCheckout";
+import type {
+    StorefrontPaymentMethod,
+    StorefrontPaymentOption,
+} from "@/modules/checkout/types/payment";
+import { checkStorefrontServiceability } from "@/modules/storefront/api/serviceabilityApi";
 import { useStorefrontBootstrapContext } from "@/providers/StorefrontBootstrapProvider";
 import { useCartStore } from "@/modules/cart/store/cartStore";
 import { useStorefrontAuthStore } from "@/store/storefrontAuthStore";
@@ -80,6 +91,14 @@ export default function CheckoutPage() {
 
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [serviceabilityMessage, setServiceabilityMessage] = useState<string | null>(null);
+    const [paymentMessage, setPaymentMessage] = useState<string | null>(null);
+    const [paymentOptions, setPaymentOptions] = useState<StorefrontPaymentOption[]>([]);
+    const [paymentMethods, setPaymentMethods] = useState<StorefrontPaymentMethod[]>([]);
+    const [paymentMethodsLoading, setPaymentMethodsLoading] = useState(false);
+    const [selectedPaymentOptionId, setSelectedPaymentOptionId] = useState("");
+    const [paymentMethod, setPaymentMethod] =
+        useState<"ONLINE" | "CASH_ON_DELIVERY">("CASH_ON_DELIVERY");
 
     // Compute cart summary from cart items to avoid unstable store snapshots.
     const cartSummary = useMemo(() => {
@@ -153,6 +172,25 @@ export default function CheckoutPage() {
         }
     }, [items.length, router]);
 
+    useEffect(() => {
+        async function loadPaymentOptions() {
+            if (!brandOwnerId) return;
+
+            try {
+                const options = await getStorefrontPaymentOptions(brandOwnerId);
+                setPaymentOptions(options);
+
+                const defaultOption = options.find((option) => option.isDefault) || options[0];
+                setSelectedPaymentOptionId(defaultOption?.tenantPaymentGatewayId ?? "");
+            } catch {
+                setPaymentOptions([]);
+                setSelectedPaymentOptionId("");
+            }
+        }
+
+        void loadPaymentOptions();
+    }, [brandOwnerId]);
+
     const grandTotal = useMemo(() => {
         return (
             cartSummary.subtotal +
@@ -161,6 +199,59 @@ export default function CheckoutPage() {
             Number(discountAmount || 0)
         );
     }, [cartSummary, shippingAmount, discountAmount]);
+
+    const deliveryAddress = sameAsBilling ? billingAddress : shippingAddress;
+    const deliveryPostalCode = deliveryAddress.postalCode.trim();
+    const onlineMethod = paymentMethods.find((item) => item.method === "ONLINE");
+    const codMethod = paymentMethods.find(
+        (item) => item.method === "CASH_ON_DELIVERY",
+    );
+    const onlinePaymentAvailable =
+        Boolean(onlineMethod?.available) && paymentOptions.length > 0;
+    const codAvailable = Boolean(codMethod?.available);
+    const noPaymentMethodsAvailable =
+        !paymentMethodsLoading && !onlinePaymentAvailable && !codAvailable;
+
+    useEffect(() => {
+        async function loadPaymentMethods() {
+            if (!brandOwnerId) return;
+
+            try {
+                setPaymentMethodsLoading(true);
+                const methods = await getStorefrontPaymentMethods(brandOwnerId, {
+                    amount: grandTotal,
+                    postalCode: deliveryPostalCode || undefined,
+                });
+                setPaymentMethods(methods);
+            } catch {
+                setPaymentMethods([]);
+            } finally {
+                setPaymentMethodsLoading(false);
+            }
+        }
+
+        void loadPaymentMethods();
+    }, [brandOwnerId, deliveryPostalCode, grandTotal]);
+
+    useEffect(() => {
+        if (onlinePaymentAvailable && !codAvailable) {
+            setPaymentMethod("ONLINE");
+            return;
+        }
+
+        if (codAvailable && !onlinePaymentAvailable) {
+            setPaymentMethod("CASH_ON_DELIVERY");
+            return;
+        }
+
+        if (paymentMethod === "ONLINE" && !onlinePaymentAvailable && codAvailable) {
+            setPaymentMethod("CASH_ON_DELIVERY");
+        }
+
+        if (paymentMethod === "CASH_ON_DELIVERY" && !codAvailable && onlinePaymentAvailable) {
+            setPaymentMethod("ONLINE");
+        }
+    }, [codAvailable, onlinePaymentAvailable, paymentMethod]);
 
     // Handle shared customer field updates.
     function handleCustomerFieldChange(field: string, value: string) {
@@ -176,6 +267,9 @@ export default function CheckoutPage() {
     // Handle billing address updates.
     function handleBillingAddressChange(field: string, value: string) {
         setError(null);
+        if (field === "postalCode" && sameAsBilling) {
+            setServiceabilityMessage(null);
+        }
         setBillingAddress((prev) => ({
             ...prev,
             [field]: value,
@@ -185,6 +279,9 @@ export default function CheckoutPage() {
     // Handle shipping address updates.
     function handleShippingAddressChange(field: string, value: string) {
         setError(null);
+        if (field === "postalCode") {
+            setServiceabilityMessage(null);
+        }
         setShippingAddress((prev) => ({
             ...prev,
             [field]: value,
@@ -235,9 +332,49 @@ export default function CheckoutPage() {
             return;
         }
 
+        if (!deliveryPostalCode) {
+            setError("Please enter a valid pincode.");
+            return;
+        }
+
+        if (noPaymentMethodsAvailable) {
+            setError("No payment method is available for this order.");
+            return;
+        }
+
+        if (paymentMethod === "ONLINE" && (!selectedPaymentOptionId || !onlinePaymentAvailable)) {
+            setError("Please select an online payment option.");
+            return;
+        }
+
+        if (paymentMethod === "CASH_ON_DELIVERY" && !codAvailable) {
+            setError(codMethod?.reason || "Cash on Delivery is not available.");
+            return;
+        }
+
         try {
             setIsSubmitting(true);
             setError(null);
+            setPaymentMessage(null);
+            setServiceabilityMessage("Checking delivery availability...");
+
+            const serviceability = await checkStorefrontServiceability({
+                pincode: deliveryPostalCode,
+                channelType: "DIRECT_WEBSITE",
+                brandOwnerId,
+            });
+
+            if (!serviceability.serviceable) {
+                setError("Sorry, delivery is not available to this pincode.");
+                setServiceabilityMessage(null);
+                return;
+            }
+
+            setServiceabilityMessage(
+                serviceability.matchedLevel
+                    ? `Delivery is available in your area (${serviceability.matchedLevel}).`
+                    : "Delivery is available in your area.",
+            );
 
             const createdOrder = await createStorefrontOrder(brandOwnerId, {
                 firstName: firstName.trim(),
@@ -247,6 +384,7 @@ export default function CheckoutPage() {
                 notes: notes.trim() || undefined,
                 shippingAmount,
                 discountAmount,
+                selectedPaymentMethod: paymentMethod,
                 sameAsBilling,
                 billingAddress: {
                     fullName: billingAddress.fullName.trim() || undefined,
@@ -283,13 +421,52 @@ export default function CheckoutPage() {
             });
 
             clearCart();
+            const confirmationBase = `/order-confirmation?orderId=${createdOrder.id}&token=${encodeURIComponent(createdOrder.orderAccessToken)}`;
 
-            if (customer) {
-                router.push(`/account/orders/${createdOrder.id}`);
+            if (paymentMethod === "ONLINE") {
+                setPaymentMessage("Preparing secure payment checkout...");
+
+                const paymentSession = await createStorefrontPaymentSession(
+                    brandOwnerId,
+                    {
+                        orderId: createdOrder.id,
+                        tenantPaymentGatewayId: selectedPaymentOptionId,
+                    },
+                );
+
+                await openRazorpayCheckout({
+                    session: paymentSession,
+                    storeName:
+                        bootstrap?.storefront?.storefrontName ||
+                        bootstrap?.brandOwner?.businessName,
+                    customerName: `${firstName} ${lastName}`.trim(),
+                    customerEmail: email.trim(),
+                    customerPhone: phone.trim() || undefined,
+                    themeColor: bootstrap?.storefront?.primaryColor,
+                    onSuccess: () => {
+                        setPaymentMessage(
+                            "Payment submitted. We are confirming it securely.",
+                        );
+
+                        router.push(
+                            `${confirmationBase}&status=processing`,
+                        );
+                    },
+                    onDismiss: () => {
+                        setPaymentMessage(
+                            "Payment window closed. Your order is placed but payment is still pending.",
+                        );
+
+                        router.push(
+                            `${confirmationBase}&status=pending`,
+                        );
+                    },
+                });
+
                 return;
             }
 
-            router.push("/");
+            router.push(`${confirmationBase}&status=cod`);
         } catch (err: any) {
             setError(
                 err?.response?.data?.message ||
@@ -324,6 +501,12 @@ export default function CheckoutPage() {
                 {error ? (
                     <div className="mb-6 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
                         {error}
+                    </div>
+                ) : null}
+
+                {serviceabilityMessage ? (
+                    <div className="mb-6 rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-700">
+                        {serviceabilityMessage}
                     </div>
                 ) : null}
 
@@ -371,6 +554,23 @@ export default function CheckoutPage() {
                             sameAsBilling={sameAsBilling}
                             onSameAsBillingChange={setSameAsBilling}
                             isSubmitting={isSubmitting}
+                            paymentMethod={paymentMethod}
+                            onPaymentMethodChange={setPaymentMethod}
+                            onlinePaymentAvailable={onlinePaymentAvailable}
+                            codAvailable={codAvailable}
+                            onlineUnavailableReason={
+                                onlineMethod?.reason ||
+                                (paymentOptions.length === 0
+                                    ? "No online payment gateway is enabled for this store."
+                                    : null)
+                            }
+                            codUnavailableReason={codMethod?.reason}
+                            paymentMethodsLoading={paymentMethodsLoading}
+                            noPaymentMethodsAvailable={noPaymentMethodsAvailable}
+                            selectedPaymentOptionId={selectedPaymentOptionId}
+                            onSelectedPaymentOptionChange={setSelectedPaymentOptionId}
+                            paymentOptions={paymentOptions}
+                            paymentMessage={paymentMessage}
                             onSubmit={handleSubmit}
                         />
                     </div>

@@ -18,6 +18,10 @@ type Props = {
     quantity: number;
     onQuantityChange: (quantity: number) => void;
     onAddToCart: () => void;
+    feedback?: {
+        type: "success" | "error";
+        text: string;
+    } | null;
 };
 
 export default function AddToCartCard({
@@ -26,6 +30,7 @@ export default function AddToCartCard({
     quantity,
     onQuantityChange,
     onAddToCart,
+    feedback,
 }: Props) {
     const maxQty = useMemo(() => {
         if (!selectedVariant) return 1;
@@ -94,6 +99,18 @@ export default function AddToCartCard({
             >
                 Add to Cart
             </button>
+
+            {feedback ? (
+                <div
+                    className={`mt-3 rounded-2xl border px-4 py-3 text-sm ${feedback.type === "success"
+                            ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+                            : "border-red-200 bg-red-50 text-red-700"
+                        }`}
+                    role="status"
+                >
+                    {feedback.text}
+                </div>
+            ) : null}
 
             {!selectedVariant ? (
                 <p className="mt-3 text-xs text-amber-600">

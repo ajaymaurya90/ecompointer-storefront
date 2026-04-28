@@ -11,6 +11,8 @@ import { api } from "@/lib/http";
 import type {
     CreateStorefrontOrderPayload,
     CreateStorefrontOrderResponse,
+    StorefrontOrderStatus,
+    StorefrontOrderStatusResponse,
 } from "@/modules/checkout/types/checkout";
 
 export async function createStorefrontOrder(
@@ -20,6 +22,23 @@ export async function createStorefrontOrder(
     const response = await api.post<CreateStorefrontOrderResponse>(
         `/storefront/orders/brand-owner/${brandOwnerId}`,
         data
+    );
+
+    return response.data.data;
+}
+
+export async function getStorefrontOrderStatus(
+    brandOwnerId: string,
+    orderId: string,
+    orderAccessToken: string
+): Promise<StorefrontOrderStatus> {
+    const response = await api.get<StorefrontOrderStatusResponse>(
+        `/storefront/orders/brand-owner/${brandOwnerId}/${orderId}/status`,
+        {
+            params: {
+                token: orderAccessToken,
+            },
+        }
     );
 
     return response.data.data;
